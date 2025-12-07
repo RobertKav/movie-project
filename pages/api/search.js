@@ -32,4 +32,8 @@ export default async function handler(req, res) {
     console.error('TMDb API error:', error);
     return res.status(500).json({ error: 'Failed to fetch from TMDb' });
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> c6601fa099640593c1d4e2d15b6185b9ed176fe0
