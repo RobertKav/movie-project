@@ -94,3 +94,64 @@ Rating (1-10):
 </div>
 );
 }
+// pages/api/movie/[id].js
+import { supabaseServer } from '../../../lib/supabaseServer'; // your server supabase client
+
+export default async function handler(req, res) {
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing id' });
+
+  // 1) Try Supabase cache first
+  try {
+    const { data: cached, error: cacheErr } = await supabaseServer
+      .from('movies_cache')
+      .select('tmdb_json, poster_path, title, fetched_at')
+      .eq('movie_id', String(id))
+      .single();
+
+    // Use cache if found and fresh (e.g., 7 days)
+    if (cached) {
+      const fetchedAt = new Date(cached.fetched_at);
+      const ageDays = (Date.now() - fetchedAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (ageDays < 7) {
+        return res.status(200).json({ movie: cached.tmdb_json, cached: true });
+      }
+    }
+  } catch (e) {
+    // ignore cache failures and proceed to fetch TMDb
+    console.warn('cache check failed', e);
+  }
+
+  // 2) Fetch from TMDb
+  const tmdbKey = process.env.TMDB_API_KEY;
+  const url = `https://api.themoviedb.org/3/movie/${encodeURIComponent(id)}?api_key=${tmdbKey}&language=en-US&append_to_response=credits,reviews`;
+
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      const text = await r.text();
+      return res.status(r.status).json({ error: text });
+    }
+    const movie = await r.json();
+
+    // 3) Upsert cache in Supabase
+    try {
+      await supabaseServer
+        .from('movies_cache')
+        .upsert({
+          movie_id: String(id),
+          title: movie.title,
+          poster_path: movie.poster_path,
+          tmdb_json: movie,
+          fetched_at: new Date().toISOString()
+        }, { onConflict: 'movie_id' });
+    } catch (e) {
+      console.warn('supabase cache upsert failed', e);
+    }
+
+    res.status(200).json({ movie, cached: false });
+  } catch (err) {
+    console.error('TMDb fetch error', err);
+    res.status(500).json({ error: 'TMDb fetch failed' });
+  }
+}
