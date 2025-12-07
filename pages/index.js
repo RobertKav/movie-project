@@ -34,3 +34,18 @@ return (
 </div>
 );
 }
+async function doSearch(q) {
+  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+  const json = await res.json();
+  return json.results || [];
+}
+
+// render
+{results.map(m => (
+  <div key={m.id}>
+    <a href={`/movie/${m.id}`}>
+      <img src={m.poster_path ? `https://image.tmdb.org/t/p/w300${m.poster_path}` : '/no-poster.png'} alt={m.title} />
+      <div>{m.title} ({m.release_date?.split('-')[0]})</div>
+    </a>
+  </div>
+))}
