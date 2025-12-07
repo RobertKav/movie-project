@@ -155,3 +155,10 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'TMDb fetch failed' });
   }
 }
+// in pages/movie/[id].js (client-side example)
+useEffect(() => {
+  if (!id) return;
+  fetch(`/api/movie/${id}`)
+    .then(r => r.json())
+    .then(j => setMovie(j.movie));
+}, [id]);
