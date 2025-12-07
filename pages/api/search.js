@@ -1,5 +1,6 @@
 // pages/api/search.js
-import fetch from 'node-fetch';
+const res = await fetch(url)
+const data = await res.json()
 
 
 export default async function handler(req, res) {
