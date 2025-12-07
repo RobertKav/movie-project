@@ -1,47 +1,35 @@
 // pages/api/search.js
-const res = await fetch(url)
-const data = await res.json()
-
 
 export default async function handler(req, res) {
-const { q } = req.query;
-if (!q) return res.status(400).json({ error: 'Missing q param' });
+  const q = req.query.q;
 
+  if (!q) {
+    return res.status(400).json({ error: 'Missing search query' });
+  }
 
-const tmdbKey = process.env.TMDB_API_KEY;
-const url = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(q)}`;
+  const apiKey = process.env.TMDB_API_KEY;
 
+  if (!apiKey) {
+    return res.status(500).json({ error: 'TMDB_API_KEY not found in env' });
+  }
 
-const r = await fetch(url);
-const data = await r.json();
-// Return the first 10 results
-res.status(200).json({ results: data.results?.slice(0, 10) || [] });
-}
-// pages/api/search.js
-// server-side: calls TMDb search and returns results
-import { NextResponse } from 'next/server';
-
-export default async function handler(req, res) {
-  const q = req.query.q || req.url.split('?q=')[1] || '';
-  if (!q) return res.status(400).json({ error: 'Missing q param' });
-
-  const tmdbKey = process.env.TMDB_API_KEY;
-  const url = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(q)}&include_adult=false&language=en-US&page=1`;
+  const url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(q)}&include_adult=false&language=en-US&page=1`;
 
   try {
-    const r = await fetch(url);
-    const data = await r.json();
-    // return minimal fields to client
-    const results = (data.results || []).map(m => ({
-      id: m.id,
-      title: m.title,
-      release_date: m.release_date,
-      poster_path: m.poster_path,
-      overview: m.overview
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const results = (data.results || []).map((movie) => ({
+      id: movie.id,
+      title: movie.title,
+      release_date: movie.release_date,
+      poster_path: movie.poster_path,
+      overview: movie.overview
     }));
-    res.status(200).json({ results });
-  } catch (err) {
-    console.error('TMDb search error', err);
-    res.status(500).json({ error: 'TMDb search failed' });
+
+    return res.status(200).json({ results });
+  } catch (error) {
+    console.error('TMDb API error:', error);
+    return res.status(500).json({ error: 'Failed to fetch from TMDb' });
   }
 }
